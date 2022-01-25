@@ -1,0 +1,64 @@
+# action.yml
+name: 'Go Build'
+description: 'Action to build the go executable.'
+branding:
+  icon: terminal
+  color: green
+inputs:
+  executable_name:
+    description: 'The executable name to be built, if not specified defaults to repo name.'
+    required: false
+    default: '{{ GITHUB_REPOSITORY }}'
+  goos:
+    description: 'The target OS of which the executable has to be built for.'
+    required: false
+    default: 'linux'
+  goarch:
+    description: 'The target OS of which the executable has to be built for.'
+    required: false
+    default: 'amd64'
+  aws_access_key_id:
+    description: 'The aws credentails for the AWS account to push build to S3.'
+    required: true
+  aws_secret_access_key:
+    description: 'The aws credentails for the AWS account to push build to S3.'
+    required: true
+  s3_bucket:
+    description: 'The S3 bucket to copy the executable.'
+    required: false
+  release_version:
+    description: 'The release version of the code being deployed.'
+    required: false
+    default: 'v0.0.0'
+  aws_region:
+    description: 'The aws region for the account.'
+    required: false
+    default: 'us-east-1'
+  ec2_user:
+    description: 'User name to connect to ec2'
+    required: false
+  ec2_ip:
+    description: 'IP Address to connect to ec2'
+    required: false
+  ec2_pass:
+    description: 'EC2 User password to connect to ec2'
+    required: false
+  ec2_path:
+    description: 'EC2 path to deploy the file to.'
+    required: false 
+  push_to_s3:
+    description: 'Parameter to push to s3'
+    required: true
+    default: 'false'
+  push_to_ec2:
+    description: 'Parameter to push to ec2'
+    required: true
+    default: 'false'
+
+outputs:
+  s3_build_url:
+    description: 'Response of the go build command.'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
