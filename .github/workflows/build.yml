@@ -3,14 +3,10 @@ name: "build"
 on:
   push:
     tags:
-      - "infra_setup"
-    branches:
-      - "infra_setup"
-  pull_request:
-    types: [opened, synchronize, reopened]    
+      - "*"
   workflow_dispatch:
       branches:
-      - "infra_setup"
+      - "*"
 
 env:
 # Set HOME for refrencing the GOPATH
@@ -19,13 +15,11 @@ env:
 jobs:
   build:
     name: "Build"
-    runs-on: ['self-hosted','infra_id:gryphon-extractor']
+    runs-on: ubuntu-latest
     steps:
       - name: Code Checkout
         uses: actions/checkout@v2
         with:
-          ssh-key: ${{ secrets.GLOBAL_FLEXERA_CI_PRIVATE_SSH_KEY }}
-          submodules: recursive
           path: go/src/github.com/${{ github.repository }}
 
       - name: Setup Environment Variables
