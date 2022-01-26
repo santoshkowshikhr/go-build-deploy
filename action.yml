@@ -1,5 +1,5 @@
 # action.yml
-name: 'Go Build'
+name: 'Go-build-deploy'
 description: 'Action to build the go executable.'
 branding:
   icon: terminal
