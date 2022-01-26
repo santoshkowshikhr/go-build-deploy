@@ -10,7 +10,7 @@ This will help teams automate build and deploy the executable to ec2 or s3.
 ```
 steps:
 - name: Start build deploy
-  uses: santoshkowshikhr/go-build-deploy@v1.0.0
+  uses: santoshkowshikhr/go-build-deploy@v1.1.1
   with:
     executable_name: go-executable
     goos: linux
