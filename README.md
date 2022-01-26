@@ -2,6 +2,7 @@
 
 This github action will build binary and push the binary to ec2 or s3.
 
+[![build](https://github.com/santoshkowshikhr/go-build-deploy/actions/workflows/build.yml/badge.svg?branch=test-github-actions)](https://github.com/santoshkowshikhr/go-build-deploy/actions/workflows/build.yml)
 [![GitHub license](https://img.shields.io/badge/license-GNU%20GPL-blue)](https://github.com/santoshkowshikhr/go-build-deploy/blob/main/LICENSE)
 
 This will help teams automate build and deploy the executable to ec2 or s3.
