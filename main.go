@@ -153,7 +153,7 @@ func makeDir() error {
 
 func cleanup() error {
 	if err := os.RemoveAll("./builds"); err != nil {
-		log.Fatal(err)
+		return err
 	}
 	return nil
 }
@@ -190,7 +190,9 @@ func main() {
 	}
 
 	fmt.Printf("Creating builds directory.\n")
-	makeDir()
+	if err := makeDir(); err != nil {
+		log.Fatal(err)
+	}
 
 	cmd := "go"
 	arg1 := "build"
@@ -217,19 +219,25 @@ func main() {
 		if err := DeployBuildToEC2(); err != nil {
 			log.Fatal(err)
 		}
-		cleanup()
+		if err := cleanup(); err != nil {
+			log.Fatal(err)
+		}
 	} else if os.Getenv("INPUT_PUSH_TO_S3") == "true" {
 		fmt.Println("PUSH_TO_S3 is set to true, Pushing build to s3.")
 		if err := PushToS3(); err != nil {
 			log.Fatal(err)
 		}
-		cleanup()
+		if err := cleanup(); err != nil {
+			log.Fatal(err)
+		}
 	} else if os.Getenv("INPUT_PUSH_TO_EC2") == "true" {
 		fmt.Println("PUSH_TO_EC2 is set to true Pushing build to ec2.")
 		if err := DeployBuildToEC2(); err != nil {
 			log.Fatal(err)
 		}
-		cleanup()
+		if err := cleanup(); err != nil {
+			log.Fatal(err)
+		}
 	} else {
 		log.Fatal("No input to push to s3 or ec2, exiting")
 	}
