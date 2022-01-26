@@ -6,7 +6,7 @@ on:
       - "*"
   workflow_dispatch:
       branches:
-      - "*"
+      - "test-github-actions"
 
 env:
 # Set HOME for refrencing the GOPATH
