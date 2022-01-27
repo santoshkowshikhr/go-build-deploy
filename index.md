@@ -33,7 +33,6 @@ steps:
 
 ### Inputs:
 | Name | Description | Default |Required | Comments |
-
 | - | - | - | - | - |
 | **`executable_name`** | This is the executable name that will be stored on to ec2 and s3. | Github repo name | ✔ | |
 | **`goos`** | This is the os name for which the executable needs to be built. | linux | | |
@@ -60,7 +59,6 @@ steps:
 
 ### Outputs:
 | Name | Description |
-
 | --- | --- |
 | **`s3_url`** | The s3 url where the build was pushed. |
 
