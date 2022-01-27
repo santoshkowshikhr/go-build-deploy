@@ -60,6 +60,7 @@ steps:
 
 ### Outputs:
 | Name | Description |
+
 | --- | --- |
 | **`s3_url`** | The s3 url where the build was pushed. |
 
