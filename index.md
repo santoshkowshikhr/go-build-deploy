@@ -18,7 +18,7 @@ steps:
     goos: linux
     goarch: amd64
     aws_region: us-east-1
-    aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }
+    aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
     aws_secret_access_key: ${{ AWS_SECRET_ACCESS_KEY }}
     s3_bucket: my-go-build
     release_version: v1.1.1
