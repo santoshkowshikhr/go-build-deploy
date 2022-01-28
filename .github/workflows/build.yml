@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "*"
+    branches:
+      - "*"
   workflow_dispatch:
       branches:
       - "test-github-actions"
