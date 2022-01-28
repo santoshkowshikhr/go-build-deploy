@@ -61,5 +61,35 @@ steps:
 | --- | --- |
 | **`s3_url`** | The s3 url where the build was pushed. |
 
+
+### Versions:
+The version passed to the action is used to append to the exe file and meta file. `If the version is not passed the branch name will be appeneded to the file names.`
+
+***Example:***
+
+***When version v1.0.0 is passed:***
+
+```
+exe filename: executable-v100
+meta file: meta-v100.txt
+```
+
+***When version is not passed.***
+```
+exe filename: executable-branch
+meta file: meta-branch.txt
+```
+
+### Meta File:
+
+Below is an example of how an meta file looks like.
+
+```
+Deployed Filename: exe-name
+Deployed Version: branch/v1.0.0
+Deployed Timestamp: 2022-01-27 09:51:04.333950084 +0000 UTC
+Deployed By: username
+```
+
 ## License
 The scripts and documentation in this project are released under the [GNU GPL](https://github.com/santoshkowshikhr/go-build-deploy/blob/main/LICENSE).
