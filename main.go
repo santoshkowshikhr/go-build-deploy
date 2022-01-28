@@ -116,15 +116,17 @@ func DeployBuildToEC2() error {
 
 func createDeployMetaFile() (string, error) {
 	currtime := time.Now()
-	fmt.Printf("Deployed Filename: %v\n", os.Getenv("INPUT_EXECUTABLE_NAME"))
+	fmt.Printf("Deployed Filename: %v\n", os.Getenv("EXE_FILE"))
 	fmt.Printf("Deployed Version: %v\n", os.Getenv("INPUT_RELEASE_VERSION"))
 	fmt.Printf("Deployed Timestamp: %v\n", currtime.Round(0))
+	fmt.Printf("Deployed By:%v\n", os.Getenv("GITHUB_ACTOR"))
 
 	data := []byte(fmt.Sprintf(
-		"Deployed Filename: %v\nDeployed Version: %v\nDeployed Timestamp: %v\n",
-		os.Getenv("INPUT_EXECUTABLE_NAME"),
+		"Deployed Filename: %v\nDeployed Version: %v\nDeployed Timestamp: %v\nDeployed By:%v\n",
+		os.Getenv("EXE_FILE"),
 		os.Getenv("INPUT_RELEASE_VERSION"),
-		currtime.Round(0)))
+		currtime.Round(0),
+		os.Getenv("GITHUB_ACTOR")))
 
 	metafile := fmt.Sprintf("%v/%v", "builds",
 		os.Getenv("VERSION_FILE"))
@@ -184,7 +186,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ver_meta_file := fmt.Sprintf("%v-%v.txt", "VersionMeta", os.Getenv("RELEASE_VERSION"))
+	ver_meta_file := fmt.Sprintf("%v-%v.txt", "meta", os.Getenv("RELEASE_VERSION"))
 	if err := os.Setenv("VERSION_FILE", ver_meta_file); err != nil {
 		log.Fatal(err)
 	}
