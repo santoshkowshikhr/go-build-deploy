@@ -185,7 +185,14 @@ func main() {
 	if err := os.Setenv("GOARCH", os.Getenv("INPUT_GOARCH")); err != nil {
 		log.Fatal(err)
 	}
+	if err := os.Setenv("GOHOSTOS", "linux"); err != nil {
+		log.Fatal(err)
+	}
+	if err := os.Setenv("GOHOSTARCH", "amd64"); err != nil {
+		log.Fatal(err)
+	}
 
+	fmt.Printf("GOOS:%v, GOARCH:%v, GOHOSTOS: %v, GOHOSTARCH: %v\n", os.Getenv("GOOS"), os.Getenv("GOARCH"), os.Getenv("GOHOSTOS"), os.Getenv("GOHOSTARCH"))
 	ver_meta_file := fmt.Sprintf("%v-%v.txt", "meta", os.Getenv("RELEASE_VERSION"))
 	if err := os.Setenv("VERSION_FILE", ver_meta_file); err != nil {
 		log.Fatal(err)
