@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -145,11 +146,12 @@ func createDeployMetaFile() (string, error) {
 }
 
 func makeDir() error {
-	err := os.Mkdir("builds", 0755)
-	if err != nil {
-		return err
+	if _, err := os.Stat("."); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir("builds", 0755)
+		if err != nil {
+			return err
+		}
 	}
-
 	return nil
 }
 
@@ -196,6 +198,11 @@ func main() {
 	ver_meta_file := fmt.Sprintf("%v-%v.txt", "meta", os.Getenv("RELEASE_VERSION"))
 	if err := os.Setenv("VERSION_FILE", ver_meta_file); err != nil {
 		log.Fatal(err)
+	}
+
+	fmt.Printf("Cleaning up old build directory.")
+	if err := cleanup(); err != nil {
+		fmt.Printf("Builds directory does not exist. Continue.")
 	}
 
 	fmt.Printf("Creating builds directory.\n")
