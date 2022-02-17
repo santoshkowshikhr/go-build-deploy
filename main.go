@@ -219,7 +219,7 @@ func main() {
 
 	out, err1 := exec.Command(cmd, arg1, arg2, arg3).CombinedOutput()
 	fmt.Printf("err1: %v", err1)
-	fmt.Printf("out: %v", out)
+	fmt.Printf("out: %v", string(out))
 
 	if err := exe.Run(); err != nil {
 		log.Fatal(err)
