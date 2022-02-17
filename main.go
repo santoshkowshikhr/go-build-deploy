@@ -217,6 +217,14 @@ func main() {
 	exe := exec.Command(cmd, arg1, arg2, arg3)
 	fmt.Printf("Running Command: %v %v %v %v\n", cmd, arg1, arg2, arg3)
 
+	out, err1 := exec.Command(cmd, arg1, arg2, arg3).Output()
+	if err1 != nil {
+		fmt.Println("Error")
+		log.Fatal(err1)
+	}
+
+	fmt.Printf("out: %v", out)
+
 	if err := exe.Run(); err != nil {
 		fmt.Printf("os.stderr: %v\n, err: %v\n", os.Stderr, err)
 		log.Fatal(err)
