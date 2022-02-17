@@ -217,18 +217,19 @@ func main() {
 	exe := exec.Command(cmd, arg1, arg2, arg3)
 	fmt.Printf("Running Command: %v %v %v %v\n", cmd, arg1, arg2, arg3)
 
+	out, err1 := exec.Command(cmd, arg1, arg2, arg3).CombinedOutput()
+	fmt.Printf("err1: %v", err1)
+	fmt.Printf("out: %v", out)
+
 	if err := exe.Run(); err != nil {
-		fmt.Printf("os.stderr: %v\n, err: %v\n", os.Stderr, err)
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Line 224, after running the command")
 	_, err := createDeployMetaFile()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Line 230, after running the createdeploymeta")
 	if os.Getenv("INPUT_PUSH_TO_EC2") == "true" && os.Getenv("INPUT_PUSH_TO_S3") == "true" {
 		fmt.Println("PUSH_TO_S3 is set to true, Pushing build to s3.")
 		if err := PushToS3(); err != nil {
