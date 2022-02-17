@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -218,10 +217,8 @@ func main() {
 	exe := exec.Command(cmd, arg1, arg2, arg3)
 	fmt.Printf("Running Command: %v %v %v %v\n", cmd, arg1, arg2, arg3)
 
-	var stderr bytes.Buffer
-	exe.Stderr = &stderr
-	log.Printf("StdErr: %v", stderr.String())
 	if err := exe.Run(); err != nil {
+		fmt.Printf("os.stderr: %v\n, err: %v\n", os.Stderr, err)
 		log.Fatal(err)
 	}
 
