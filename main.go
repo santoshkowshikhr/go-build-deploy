@@ -217,9 +217,9 @@ func main() {
 	exe := exec.Command(cmd, arg1, arg2, arg3)
 	fmt.Printf("Running Command: %v %v %v %v\n", cmd, arg1, arg2, arg3)
 
-	fmt.Printf("Line 220, waiting for run")
+	fmt.Printf("Line 220, waiting for run\n")
 	if err := exe.Run(); err != nil {
-		fmt.Printf("Line 220, waiting for run(1)")
+		// fmt.Printf("Line 220, waiting for run(1)")
 		fmt.Printf("Error is here: %v", err)
 		log.Fatal(err)
 	}
