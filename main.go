@@ -221,11 +221,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fmt.Printf("Line 224, after running the command")
 	_, err := createDeployMetaFile()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	fmt.Printf("Line 230, after running the createdeploymeta")
 	if os.Getenv("INPUT_PUSH_TO_EC2") == "true" && os.Getenv("INPUT_PUSH_TO_S3") == "true" {
 		fmt.Println("PUSH_TO_S3 is set to true, Pushing build to s3.")
 		if err := PushToS3(); err != nil {
