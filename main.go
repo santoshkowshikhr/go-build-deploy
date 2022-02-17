@@ -219,6 +219,7 @@ func main() {
 
 	fmt.Printf("Line 220, waiting for run")
 	if err := exe.Run(); err != nil {
+		fmt.Printf("Line 220, waiting for run(1)")
 		log.Fatal(err)
 	}
 
