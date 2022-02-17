@@ -212,18 +212,10 @@ func main() {
 
 	cmd := "go"
 	arg1 := "build"
-	arg2 := "-o"
+	arg2 := "-a -o"
 	arg3 := fmt.Sprintf("%v/%v", "builds", os.Getenv("EXE_FILE"))
 	exe := exec.Command(cmd, arg1, arg2, arg3)
 	fmt.Printf("Running Command: %v %v %v %v\n", cmd, arg1, arg2, arg3)
-
-	out, err1 := exec.Command(cmd, arg1, arg2, arg3).Output()
-	if err1 != nil {
-		fmt.Println("Error")
-		log.Fatal(err1)
-	}
-
-	fmt.Printf("out: %v", out)
 
 	if err := exe.Run(); err != nil {
 		fmt.Printf("os.stderr: %v\n, err: %v\n", os.Stderr, err)
