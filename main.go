@@ -210,9 +210,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	files, err := ioutil.ReadDir(".")
-	if err != nil {
-		log.Fatal(err)
+	files, err1 := ioutil.ReadDir(".")
+	if err1 != nil {
+		log.Fatal(err1)
 	}
 	for _, f := range files {
 		fmt.Println(f.Name())
