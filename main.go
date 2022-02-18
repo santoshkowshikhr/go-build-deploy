@@ -210,6 +210,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	files, err := ioutil.ReadDir(".")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, f := range files {
+		fmt.Println(f.Name())
+	}
+
 	cmd := "go"
 	arg1 := "build"
 	arg2 := "-o"

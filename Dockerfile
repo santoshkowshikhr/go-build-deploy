@@ -20,8 +20,6 @@ RUN go mod download
 
 COPY *.go ./
 
-RUN ls -lrth
-
 RUN go build -o /build-deploy
 
 ENTRYPOINT [ "/build-deploy" ]
