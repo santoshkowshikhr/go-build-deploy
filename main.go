@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -210,12 +211,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	files, err1 := ioutil.ReadDir(".")
+	err1 := filepath.Walk(".",
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			fmt.Println(path, info.Size())
+			return nil
+		})
 	if err1 != nil {
-		log.Fatal(err1)
-	}
-	for _, f := range files {
-		fmt.Println(f.Name())
+		log.Println(err1)
 	}
 
 	cmd := "go"
