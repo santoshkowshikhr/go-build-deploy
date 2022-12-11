@@ -112,9 +112,9 @@ func DeployBuildToEC2() error {
 	}
 
 	for _, val := range dirCnt {
-		locfile := fmt.Sprintln("builds/", val.Name())
-		remfile := fmt.Sprintln(os.Getenv("INPUT_EC2_PATH"), "/", val.Name())
-		sugar.Infoln("Transferring the file ", locfile, "to", remfile)
+		locfile := fmt.Sprintf("%v/%v", "builds", val.Name())
+		remfile := fmt.Sprintf("%v/%v", os.Getenv("INPUT_EC2_PATH"), val.Name())
+		sugar.Infoln("Transferring the file", locfile, "to", remfile)
 
 		if val.Name() == os.Getenv("EXE_FILE") || val.Name() == os.Getenv("VERSION_FILE") {
 			err = scpClient.CopyFileToRemote(locfile, remfile, &scp.FileTransferOption{Perm: 0o755, PreserveProp: false})
@@ -138,12 +138,15 @@ func createDeployMetaFile() (string, error) {
 	sugar.Infoln("Deployed Timestamp: ", currtime.Round(0))
 	sugar.Infoln("Deployed By: ", os.Getenv("GITHUB_ACTOR"))
 
-	data := []byte(fmt.Sprintln("Deployed Filename: ", os.Getenv("EXE_FILE"),
-		"Deployed Version: ", os.Getenv("INPUT_RELEASE_VERSION"),
-		"Deployed Timestamp: ", currtime.Round(0),
-		"Deployed By:", os.Getenv("GITHUB_ACTOR")))
+	data := []byte(fmt.Sprintf(
+		"Deployed Filename: %v\nDeployed Version: %v\nDeployed Timestamp: %v\nDeployed By:%v\n",
+		os.Getenv("EXE_FILE"),
+		os.Getenv("INPUT_RELEASE_VERSION"),
+		currtime.Round(0),
+		os.Getenv("GITHUB_ACTOR")))
 
-	metafile := fmt.Sprintln("builds/", os.Getenv("VERSION_FILE"))
+	metafile := fmt.Sprintf("%v/%v", "builds",
+		os.Getenv("VERSION_FILE"))
 
 	metaFileName, err := os.Create(metafile)
 	if err != nil {
@@ -175,6 +178,7 @@ func makeDir() error {
 }
 
 func cleanup() error {
+	sugar.Info("Cleaning local...")
 	if err := os.RemoveAll("./builds"); err != nil {
 		return fmt.Errorf("%w", err)
 	}
@@ -245,8 +249,8 @@ func main() {
 		",GOHOSTOS: ", os.Getenv("GOHOSTOS"),
 		",GOHOSTARCH: ", os.Getenv("GOHOSTARCH"))
 
-	verMetaFile := fmt.Sprintln("meta-",
-		os.Getenv("RELEASE_VERSION"), ".txt")
+	verMetaFile := fmt.Sprintf("%v-%v.txt", "meta", os.Getenv("RELEASE_VERSION"))
+
 	if err := os.Setenv("VERSION_FILE",
 		verMetaFile); err != nil {
 		sugar.Errorln(err)
