@@ -286,31 +286,39 @@ func main() {
 
 	if os.Getenv("INPUT_PUSH_TO_EC2") == "true" && os.Getenv("INPUT_PUSH_TO_S3") == "true" {
 		sugar.Infoln("PUSH_TO_S3 is set to true, Pushing build to s3.")
-		if err := PushToS3(); err != nil {
-			sugar.Errorln(err)
+
+		if errS := PushToS3(); errS != nil {
+			sugar.Errorln(errS)
 		}
+
 		sugar.Infoln("PUSH_TO_EC2 is set to true Pushing build to ec2.")
-		if err := DeployBuildToEC2(); err != nil {
-			sugar.Errorln(err)
+
+		if errE := DeployBuildToEC2(); errE != nil {
+			sugar.Errorln(errE)
 		}
-		if err := cleanup(); err != nil {
-			sugar.Errorln(err)
+
+		if errC := cleanup(); errC != nil {
+			sugar.Errorln(errC)
 		}
 	} else if os.Getenv("INPUT_PUSH_TO_S3") == "true" {
 		sugar.Infoln("PUSH_TO_S3 is set to true, Pushing build to s3.")
-		if err := PushToS3(); err != nil {
-			sugar.Errorln(err)
+
+		if errS := PushToS3(); errS != nil {
+			sugar.Errorln(errS)
 		}
-		if err := cleanup(); err != nil {
-			sugar.Errorln(err)
+
+		if errC := cleanup(); errC != nil {
+			sugar.Errorln(errC)
 		}
 	} else if os.Getenv("INPUT_PUSH_TO_EC2") == "true" {
 		sugar.Infoln("PUSH_TO_EC2 is set to true Pushing build to ec2.")
-		if err := DeployBuildToEC2(); err != nil {
-			sugar.Errorln(err)
+
+		if errE := DeployBuildToEC2(); errE != nil {
+			sugar.Errorln(errE)
 		}
-		if err := cleanup(); err != nil {
-			sugar.Errorln(err)
+
+		if errC := cleanup(); errC != nil {
+			sugar.Errorln(errC)
 		}
 	} else {
 		sugar.Errorln("No input to push to s3 or ec2, exiting")
