@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -13,45 +12,45 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-
 	"github.com/povsister/scp"
+	"go.uber.org/zap"
 )
 
-func PushToS3() error {
+var sugar *zap.SugaredLogger
 
-	fmt.Printf("File to push: %v\n", os.Getenv("EXE_FILE"))
-	fmt.Printf("S3 Bucket is: %v\n", os.Getenv("INPUT_S3_BUCKET"))
-	fmt.Printf("Release version is: %v\n", os.Getenv("INPUT_RELEASE_VERSION"))
+func PushToS3() error {
+	sugar.Infoln("File to push: ", os.Getenv("EXE_FILE"))
+	sugar.Infoln("S3 Bucket is: ", os.Getenv("INPUT_S3_BUCKET"))
+	sugar.Infoln("Release version is: ", os.Getenv("INPUT_RELEASE_VERSION"))
 
 	os.Setenv("AWS_ACCESS_KEY_ID", os.Getenv("INPUT_AWS_ACCESS_KEY_ID"))
 	os.Setenv("AWS_SECRET_ACCESS_KEY", os.Getenv("INPUT_AWS_SECRET_ACCESS_KEY"))
 	os.Setenv("AWS_REGION", os.Getenv("INPUT_AWS_REGION"))
 
 	sess, err := session.NewSession()
-
 	if err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
 
 	svc := s3.New(sess)
 
-	dirCnt, err := ioutil.ReadDir("./builds")
-	if err != nil {
-		log.Fatal(err)
+	dirCnt, errB := os.ReadDir("./builds")
+	if errB != nil {
+		log.Fatal(errB)
 	}
 
 	for _, val := range dirCnt {
 		if val.Name() == os.Getenv("EXE_FILE") || val.Name() == os.Getenv("VERSION_FILE") {
-			fmt.Printf("%v/%v\n", "builds", val.Name())
+			sugar.Infof("%v/%v", "builds", val.Name())
 			file := fmt.Sprintf("%v/%v", "builds", val.Name())
 
-			buildfile, err := os.Open(file)
-			if err != nil {
-				log.Fatal(err)
+			buildfile, errF := os.Open(file)
+			if errF != nil {
+				log.Fatal(errF)
 			}
 			defer buildfile.Close()
 
-			fmt.Printf("S3 path is %v/%v\n", os.Getenv("INPUT_RELEASE_VERSION"), val.Name())
+			sugar.Infof("S3 path is %v/%v", os.Getenv("INPUT_RELEASE_VERSION"), val.Name())
 			filekey := fmt.Sprintf("%v/%v",
 				os.Getenv("INPUT_RELEASE_VERSION"),
 				val.Name())
@@ -62,65 +61,82 @@ func PushToS3() error {
 				Key:    aws.String(filekey),
 			}
 
-			result, err := svc.PutObject(input)
-			if err != nil {
-				return err
+			result, errPo := svc.PutObject(input)
+			if errPo != nil {
+				return fmt.Errorf("%w", errPo)
 			}
-			fmt.Sprintln(result)
+
+			sugar.Infoln(result)
 		}
 	}
 
-	s3_build_url := fmt.Sprintf("s3://%v/%v/",
+	s3BuildURL := fmt.Sprintf("s3://%v/%v/",
 		os.Getenv("INPUT_S3_BUCKET"),
 		os.Getenv("INPUT_RELEASE_VERSION"))
+	sugar.Infof("The s3 url for the build is: %v", s3BuildURL)
+	// sugar.Infoln(fmt.Sprintln(`::set-output name=s3_build_url::`, s3_build_url))
+	// echo "time=$time" >> $GITHUB_OUTPUT
 
-	fmt.Printf("The s3 url for the build is: %v\n", s3_build_url)
-	fmt.Printf("%v\n", fmt.Sprintf(`::set-output name=s3_build_url::%v`, s3_build_url))
+	cmd := "echo"
+	arg1 := fmt.Sprintf("%v%v", "'s3_build_url=", s3BuildURL)
+	arg2 := ">> $GITHUB_OUTPUT'"
+	exeCmd := exec.Command(cmd, arg1, arg2)
+	sugar.Infoln("Running Command: ", cmd, arg1, arg2)
+
+	if errR := exeCmd.Run(); errR != nil {
+		sugar.Errorln(errR)
+
+		return fmt.Errorf("%w", errR)
+	}
 
 	return nil
 }
 
 func DeployBuildToEC2() error {
+	sugar.Infoln("Setting the user session.")
 
-	fmt.Printf("Setting the user session.\n")
-	sshConf := scp.NewSSHConfigFromPassword(
-		os.Getenv("INPUT_EC2_USER"),
-		os.Getenv("INPUT_EC2_PASS"))
+	sshConf := scp.NewSSHConfigFromPassword(os.Getenv("INPUT_EC2_USER"), os.Getenv("INPUT_EC2_PASS"))
 
 	scpClient, err := scp.NewClient(os.Getenv("INPUT_EC2_IP"), sshConf, &scp.ClientOption{})
+
 	if err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
 	defer scpClient.Close()
 
-	dirCnt, err2 := ioutil.ReadDir("./builds")
+	dirCnt, err2 := os.ReadDir("./builds")
 	if err2 != nil {
-		log.Fatal(err2)
+		sugar.Errorln(err2)
+
+		return fmt.Errorf("%w", err2)
 	}
 
 	for _, val := range dirCnt {
 		locfile := fmt.Sprintf("%v/%v", "builds", val.Name())
 		remfile := fmt.Sprintf("%v/%v", os.Getenv("INPUT_EC2_PATH"), val.Name())
-		fmt.Printf("Transferring the file %v to %v\n", locfile, remfile)
+		sugar.Infoln("Transferring the file", locfile, "to", remfile)
+
 		if val.Name() == os.Getenv("EXE_FILE") || val.Name() == os.Getenv("VERSION_FILE") {
-			err = scpClient.CopyFileToRemote(
-				locfile,
-				remfile,
-				&scp.FileTransferOption{Perm: 0755, PreserveProp: false})
+			err = scpClient.CopyFileToRemote(locfile, remfile, &scp.FileTransferOption{Perm: 0o755, PreserveProp: false})
 		}
+
 		if err != nil {
-			log.Fatal(err)
+			sugar.Errorln(err)
+
+			return fmt.Errorf("%w", err)
 		}
 	}
+
 	return nil
 }
 
 func createDeployMetaFile() (string, error) {
 	currtime := time.Now()
-	fmt.Printf("Deployed Filename: %v\n", os.Getenv("EXE_FILE"))
-	fmt.Printf("Deployed Version: %v\n", os.Getenv("INPUT_RELEASE_VERSION"))
-	fmt.Printf("Deployed Timestamp: %v\n", currtime.Round(0))
-	fmt.Printf("Deployed By:%v\n", os.Getenv("GITHUB_ACTOR"))
+
+	sugar.Infoln("Deployed Filename: ", os.Getenv("EXE_FILE"))
+	sugar.Infoln("Deployed Version: ", os.Getenv("INPUT_RELEASE_VERSION"))
+	sugar.Infoln("Deployed Timestamp: ", currtime.Round(0))
+	sugar.Infoln("Deployed By: ", os.Getenv("GITHUB_ACTOR"))
 
 	data := []byte(fmt.Sprintf(
 		"Deployed Filename: %v\nDeployed Version: %v\nDeployed Timestamp: %v\nDeployed By:%v\n",
@@ -131,15 +147,20 @@ func createDeployMetaFile() (string, error) {
 
 	metafile := fmt.Sprintf("%v/%v", "builds",
 		os.Getenv("VERSION_FILE"))
-	f, err := os.Create(metafile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
 
-	_, err1 := f.Write(data)
+	metaFileName, err := os.Create(metafile)
+	if err != nil {
+		sugar.Errorln(err)
+
+		return "", fmt.Errorf("%w", err)
+	}
+	defer metaFileName.Close()
+
+	_, err1 := metaFileName.Write(data)
 	if err1 != nil {
-		log.Fatal(err1)
+		sugar.Errorln(err1)
+
+		return "", fmt.Errorf("%w", err1)
 	}
 
 	return metafile, nil
@@ -147,67 +168,104 @@ func createDeployMetaFile() (string, error) {
 
 func makeDir() error {
 	if _, err := os.Stat("."); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir("builds", 0755)
-		if err != nil {
-			return err
+		errM := os.Mkdir("builds", 0o755)
+		if errM != nil {
+			return fmt.Errorf("%w", errM)
 		}
 	}
+
 	return nil
 }
 
 func cleanup() error {
+	sugar.Info("Cleaning local...")
 	if err := os.RemoveAll("./builds"); err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
+
 	return nil
 }
 
-func main() {
-	fmt.Println("Getting the values.")
-	fmt.Printf("Executable Name: %v\n", os.Getenv("INPUT_EXECUTABLE_NAME"))
-	fmt.Printf("Go os is set to %v\n", os.Getenv("INPUT_GOOS"))
-	fmt.Printf("Go Arch is set to %v\n", os.Getenv("INPUT_GOARCH"))
-	fmt.Printf("AWS Region is set to %v\n", os.Getenv("INPUT_AWS_REGION"))
-	fmt.Printf("S3 bucket is set to: %v\n", os.Getenv("INPUT_S3_BUCKET"))
-	fmt.Printf("Release version is set to: %v\n", os.Getenv("INPUT_RELEASE_VERSION"))
+func init() {
+	logger, err1 := zap.NewProduction()
+	if err1 != nil {
+		sugar.Errorln(err1)
+	}
 
-	if err := os.Setenv("RELEASE_VERSION", strings.Replace(os.Getenv("INPUT_RELEASE_VERSION"), ".", "", -1)); err != nil {
-		log.Fatal(err)
+	sugar = logger.Sugar()
+}
+
+func main() {
+	sugar.Infoln("Getting the values.")
+	sugar.Infoln("Executable Name: ",
+		os.Getenv("INPUT_EXECUTABLE_NAME"))
+	sugar.Infoln("Go os is set to ",
+		os.Getenv("INPUT_GOOS"))
+	sugar.Infoln("Go Arch is set to ",
+		os.Getenv("INPUT_GOARCH"))
+	sugar.Infoln("AWS Region is set to ",
+		os.Getenv("INPUT_AWS_REGION"))
+	sugar.Infoln("S3 bucket is set to: ",
+		os.Getenv("INPUT_S3_BUCKET"))
+	sugar.Infoln("Release version is set to: ",
+		os.Getenv("INPUT_RELEASE_VERSION"))
+
+	if err := os.Setenv("RELEASE_VERSION",
+		strings.ReplaceAll(os.Getenv("INPUT_RELEASE_VERSION"),
+			".", "")); err != nil {
+		sugar.Errorln(err)
 	}
 
 	if os.Getenv("INPUT_GOOS") == "windows" {
-		os.Setenv("EXE_FILE", fmt.Sprintf("%v-%v.exe", os.Getenv("INPUT_EXECUTABLE_NAME"), os.Getenv("RELEASE_VERSION")))
+		os.Setenv("EXE_FILE", fmt.Sprintf("%v-%v.exe",
+			os.Getenv("INPUT_EXECUTABLE_NAME"),
+			os.Getenv("RELEASE_VERSION")))
 	} else {
-		os.Setenv("EXE_FILE", fmt.Sprintf("%v-%v", os.Getenv("INPUT_EXECUTABLE_NAME"), os.Getenv("RELEASE_VERSION")))
+		os.Setenv("EXE_FILE", fmt.Sprintf("%v-%v",
+			os.Getenv("INPUT_EXECUTABLE_NAME"),
+			os.Getenv("RELEASE_VERSION")))
 	}
 
-	if err := os.Setenv("GOOS", os.Getenv("INPUT_GOOS")); err != nil {
+	if err := os.Setenv("GOOS",
+		os.Getenv("INPUT_GOOS")); err != nil {
 		log.Fatal(err)
 	}
-	if err := os.Setenv("GOARCH", os.Getenv("INPUT_GOARCH")); err != nil {
+
+	if err := os.Setenv("GOARCH",
+		os.Getenv("INPUT_GOARCH")); err != nil {
 		log.Fatal(err)
 	}
+
 	if err := os.Setenv("GOHOSTOS", "linux"); err != nil {
 		log.Fatal(err)
 	}
+
 	if err := os.Setenv("GOHOSTARCH", "amd64"); err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("GOOS:%v, GOARCH:%v, GOHOSTOS: %v, GOHOSTARCH: %v\n", os.Getenv("GOOS"), os.Getenv("GOARCH"), os.Getenv("GOHOSTOS"), os.Getenv("GOHOSTARCH"))
-	ver_meta_file := fmt.Sprintf("%v-%v.txt", "meta", os.Getenv("RELEASE_VERSION"))
-	if err := os.Setenv("VERSION_FILE", ver_meta_file); err != nil {
-		log.Fatal(err)
+	sugar.Infoln("GOOS: ", os.Getenv("GOOS"),
+		",GOARCH: ", os.Getenv("GOARCH"),
+		",GOHOSTOS: ", os.Getenv("GOHOSTOS"),
+		",GOHOSTARCH: ", os.Getenv("GOHOSTARCH"))
+
+	verMetaFile := fmt.Sprintf("%v-%v.txt", "meta", os.Getenv("RELEASE_VERSION"))
+
+	if err := os.Setenv("VERSION_FILE",
+		verMetaFile); err != nil {
+		sugar.Errorln(err)
 	}
 
-	fmt.Printf("Cleaning up old build directory.")
+	sugar.Infoln("Cleaning up old build directory.")
+
 	if err := cleanup(); err != nil {
-		fmt.Printf("Builds directory does not exist. Continue.")
+		sugar.Errorln("Builds directory does not exist.")
 	}
 
-	fmt.Printf("Creating builds directory.\n")
+	sugar.Infoln("Creating builds directory.\n")
+
 	if err := makeDir(); err != nil {
-		log.Fatal(err)
+		sugar.Errorln(err)
 	}
 
 	cmd := "go"
@@ -215,47 +273,58 @@ func main() {
 	arg2 := "-o"
 	arg3 := fmt.Sprintf("%v/%v", "builds", os.Getenv("EXE_FILE"))
 	exe := exec.Command(cmd, arg1, arg2, arg3)
-	fmt.Printf("Running Command: %v %v %v %v\n", cmd, arg1, arg2, arg3)
+	sugar.Infoln("Running Command: ", cmd, arg1, arg2, arg3)
 
 	if err := exe.Run(); err != nil {
-		log.Fatal(err)
+		sugar.Errorln(err)
 	}
 
 	_, err := createDeployMetaFile()
 	if err != nil {
-		log.Fatal(err)
+		sugar.Errorln(err)
 	}
 
 	if os.Getenv("INPUT_PUSH_TO_EC2") == "true" && os.Getenv("INPUT_PUSH_TO_S3") == "true" {
-		fmt.Println("PUSH_TO_S3 is set to true, Pushing build to s3.")
-		if err := PushToS3(); err != nil {
-			log.Fatal(err)
+		sugar.Infoln("PUSH_TO_S3 is set to true, Pushing build to s3.")
+
+		if errS := PushToS3(); errS != nil {
+			sugar.Errorln(errS)
 		}
-		fmt.Println("PUSH_TO_EC2 is set to true Pushing build to ec2.")
-		if err := DeployBuildToEC2(); err != nil {
-			log.Fatal(err)
+
+		sugar.Infoln("PUSH_TO_EC2 is set to true Pushing build to ec2.")
+
+		if errE := DeployBuildToEC2(); errE != nil {
+			sugar.Errorln(errE)
 		}
-		if err := cleanup(); err != nil {
-			log.Fatal(err)
+
+		if errC := cleanup(); errC != nil {
+			sugar.Errorln(errC)
 		}
 	} else if os.Getenv("INPUT_PUSH_TO_S3") == "true" {
-		fmt.Println("PUSH_TO_S3 is set to true, Pushing build to s3.")
-		if err := PushToS3(); err != nil {
-			log.Fatal(err)
+		sugar.Infoln("PUSH_TO_S3 is set to true, Pushing build to s3.")
+
+		if errS := PushToS3(); errS != nil {
+			sugar.Errorln(errS)
 		}
-		if err := cleanup(); err != nil {
-			log.Fatal(err)
+
+		if errC := cleanup(); errC != nil {
+			sugar.Errorln(errC)
 		}
 	} else if os.Getenv("INPUT_PUSH_TO_EC2") == "true" {
-		fmt.Println("PUSH_TO_EC2 is set to true Pushing build to ec2.")
-		if err := DeployBuildToEC2(); err != nil {
-			log.Fatal(err)
+		sugar.Infoln("PUSH_TO_EC2 is set to true Pushing build to ec2.")
+
+		if errE := DeployBuildToEC2(); errE != nil {
+			sugar.Errorln(errE)
 		}
-		if err := cleanup(); err != nil {
-			log.Fatal(err)
+
+		if errC := cleanup(); errC != nil {
+			sugar.Errorln(errC)
 		}
 	} else {
-		log.Fatal("No input to push to s3 or ec2, exiting")
+		sugar.Errorln("No input to push to s3 or ec2, exiting")
+		os.Exit(1)
 	}
 
+	sugar.Infoln("GITHUB_OUTPUT", os.Getenv("GITHUB_OUTPUT"))
+	sugar.Infoln("Process completed successfully :)")
 }

@@ -1,1 +1,6 @@
 .vscode
+
+.golangci.yml
+config.yml
+
+inputs.sh
