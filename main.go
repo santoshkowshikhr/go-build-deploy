@@ -19,9 +19,14 @@ import (
 var sugar *zap.SugaredLogger
 
 func PushToS3() error {
+	releaseVersion := os.Getenv("RELEASE_VERSION")
+	if releaseVersion == "" {
+		releaseVersion = sanitizeReleaseVersion(os.Getenv("INPUT_RELEASE_VERSION"))
+	}
+
 	sugar.Infoln("File to push: ", os.Getenv("EXE_FILE"))
 	sugar.Infoln("S3 Bucket is: ", os.Getenv("INPUT_S3_BUCKET"))
-	sugar.Infoln("Release version is: ", os.Getenv("INPUT_RELEASE_VERSION"))
+	sugar.Infoln("Release version is: ", releaseVersion)
 
 	os.Setenv("AWS_ACCESS_KEY_ID", os.Getenv("INPUT_AWS_ACCESS_KEY_ID"))
 	os.Setenv("AWS_SECRET_ACCESS_KEY", os.Getenv("INPUT_AWS_SECRET_ACCESS_KEY"))
@@ -50,9 +55,9 @@ func PushToS3() error {
 			}
 			defer buildfile.Close()
 
-			sugar.Infof("S3 path is %v/%v", os.Getenv("INPUT_RELEASE_VERSION"), val.Name())
+			sugar.Infof("S3 path is %v/%v", releaseVersion, val.Name())
 			filekey := fmt.Sprintf("%v/%v",
-				os.Getenv("INPUT_RELEASE_VERSION"),
+				releaseVersion,
 				val.Name())
 
 			input := &s3.PutObjectInput{
@@ -72,21 +77,12 @@ func PushToS3() error {
 
 	s3BuildURL := fmt.Sprintf("s3://%v/%v/",
 		os.Getenv("INPUT_S3_BUCKET"),
-		os.Getenv("INPUT_RELEASE_VERSION"))
+		releaseVersion)
 	sugar.Infof("The s3 url for the build is: %v", s3BuildURL)
-	// sugar.Infoln(fmt.Sprintln(`::set-output name=s3_build_url::`, s3_build_url))
-	// echo "time=$time" >> $GITHUB_OUTPUT
+	if err := writeGithubOutput("s3_build_url", s3BuildURL); err != nil {
+		sugar.Errorln(err)
 
-	cmd := "echo"
-	arg1 := fmt.Sprintf("%v%v", "'s3_build_url=", s3BuildURL)
-	arg2 := ">> $GITHUB_OUTPUT'"
-	exeCmd := exec.Command(cmd, arg1, arg2)
-	sugar.Infoln("Running Command: ", cmd, arg1, arg2)
-
-	if errR := exeCmd.Run(); errR != nil {
-		sugar.Errorln(errR)
-
-		return fmt.Errorf("%w", errR)
+		return fmt.Errorf("%w", err)
 	}
 
 	return nil
@@ -132,16 +128,20 @@ func DeployBuildToEC2() error {
 
 func createDeployMetaFile() (string, error) {
 	currtime := time.Now()
+	releaseVersion := os.Getenv("RELEASE_VERSION")
+	if releaseVersion == "" {
+		releaseVersion = sanitizeReleaseVersion(os.Getenv("INPUT_RELEASE_VERSION"))
+	}
 
 	sugar.Infoln("Deployed Filename: ", os.Getenv("EXE_FILE"))
-	sugar.Infoln("Deployed Version: ", os.Getenv("INPUT_RELEASE_VERSION"))
+	sugar.Infoln("Deployed Version: ", releaseVersion)
 	sugar.Infoln("Deployed Timestamp: ", currtime.Round(0))
 	sugar.Infoln("Deployed By: ", os.Getenv("GITHUB_ACTOR"))
 
 	data := []byte(fmt.Sprintf(
 		"Deployed Filename: %v\nDeployed Version: %v\nDeployed Timestamp: %v\nDeployed By:%v\n",
 		os.Getenv("EXE_FILE"),
-		os.Getenv("INPUT_RELEASE_VERSION"),
+		releaseVersion,
 		currtime.Round(0),
 		os.Getenv("GITHUB_ACTOR")))
 
@@ -167,11 +167,13 @@ func createDeployMetaFile() (string, error) {
 }
 
 func makeDir() error {
-	if _, err := os.Stat("."); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat("builds"); errors.Is(err, os.ErrNotExist) {
 		errM := os.Mkdir("builds", 0o755)
 		if errM != nil {
 			return fmt.Errorf("%w", errM)
 		}
+	} else if err != nil {
+		return fmt.Errorf("%w", err)
 	}
 
 	return nil
@@ -210,9 +212,9 @@ func main() {
 	sugar.Infoln("Release version is set to: ",
 		os.Getenv("INPUT_RELEASE_VERSION"))
 
-	if err := os.Setenv("RELEASE_VERSION",
-		strings.ReplaceAll(os.Getenv("INPUT_RELEASE_VERSION"),
-			".", "")); err != nil {
+	sanitizedReleaseVersion := sanitizeReleaseVersion(os.Getenv("INPUT_RELEASE_VERSION"))
+
+	if err := os.Setenv("RELEASE_VERSION", sanitizedReleaseVersion); err != nil {
 		sugar.Errorln(err)
 	}
 
@@ -327,4 +329,39 @@ func main() {
 
 	sugar.Infoln("GITHUB_OUTPUT", os.Getenv("GITHUB_OUTPUT"))
 	sugar.Infoln("Process completed successfully :)")
+}
+
+func writeGithubOutput(key, value string) error {
+	outputFile := os.Getenv("GITHUB_OUTPUT")
+	if outputFile == "" {
+		return errors.New("GITHUB_OUTPUT is not set")
+	}
+
+	file, err := os.OpenFile(outputFile, os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		return fmt.Errorf("open GITHUB_OUTPUT: %w", err)
+	}
+	defer file.Close()
+
+	if _, err := fmt.Fprintf(file, "%s=%s\n", key, value); err != nil {
+		return fmt.Errorf("write GITHUB_OUTPUT: %w", err)
+	}
+
+	return nil
+}
+
+func sanitizeReleaseVersion(version string) string {
+	sanitized := strings.Map(func(r rune) rune {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_' || r == '.' {
+			return r
+		}
+
+		return -1
+	}, version)
+
+	if sanitized == "" {
+		return "v0-0-0"
+	}
+
+	return strings.ReplaceAll(sanitized, ".", "")
 }
